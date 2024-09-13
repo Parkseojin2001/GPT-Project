@@ -11,33 +11,40 @@ from langchain.storage import LocalFileStore
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
+from langchain.memory import ConversationBufferMemory
 
 st.set_page_config(
     page_title="DocumentGPT",
     page_icon="📄",
 )
 
+
 class ChatCallbackHandler(BaseCallbackHandler):
-    
+
     message = ""
-    
-    def on_llm_start(self,*args, **kwargs):
+
+    def on_llm_start(self, *args, **kwargs):
         self.message_box = st.empty()
-            
-    def on_llm_end(self,*args, **kwargs):
+
+    def on_llm_end(self, *args, **kwargs):
         save_message(self.message, "ai")
-    
+
     def on_llm_new_token(self, token: str, *args, **kwargs):
         self.message += token
         self.message_box.markdown(self.message)
-            
+
 
 llm = ChatOpenAI(
     temperature=0.1,
     streaming=True,
     callbacks=[
         ChatCallbackHandler(),
-    ]
+    ],
+)
+
+memory = ConversationBufferMemory(
+    llm=llm,
+    max_token_limit=100,
 )
 
 
@@ -63,15 +70,16 @@ def embed_file(file):
     retriever = vectorstore.as_retriever()
     return retriever
 
+
 def save_message(message, role):
     st.session_state["messages"].append({"message": message, "role": role})
+
 
 def send_message(message, role, save=True):
     with st.chat_message(role):
         st.markdown(message)
     if save:
         save_message(message, role)
-        
 
 
 def paint_history():
@@ -81,6 +89,18 @@ def paint_history():
 
 def format_docs(docs):
     return "\n\n".join(document.page_content for document in docs)
+
+def add_history_memory(messages):
+    Len = len(messages) // 2
+    for i in range(0, Len, 2):
+        input = messages[i]["message"]
+        output = messages[i + 1]["message"]
+        
+        memory.save_context({"input": input}, {"output": output})
+            
+
+def add_memory_message(input, output):
+    memory.save_context({"input": input}, {"output": output})
 
 
 prompt = ChatPromptTemplate.from_messages(
@@ -120,7 +140,7 @@ if file:
 
     send_message("I'm ready! Ask away!", "ai", False)
     paint_history()
-
+    add_history_memory(st.session_state["messages"])
     message = st.chat_input("Ask anything about your file...")
 
     if message:
@@ -135,6 +155,15 @@ if file:
         )
         with st.chat_message("ai"):
             response = chain.invoke(message)
+            
+        add_memory_message(message, response.content)
+        
+        # 메모리에 저장된 대화 내용 확인
+        stored_history = memory.load_memory_variables({})["history"]
+
+        # 저장된 히스토리 출력
+        st.write("Stored Conversation History:", stored_history)
+        st.write("Session_State:", st.session_state["messages"])
 
 else:
     st.session_state["messages"] = []
