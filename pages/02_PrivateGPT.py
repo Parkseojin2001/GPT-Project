@@ -14,6 +14,25 @@ st.set_page_config(
     page_icon="🔒",
 )
 
+st.title("PrivateGPT")
+
+st.markdown(
+    """
+Welcome!
+            
+Use this chatbot to ask questions to an AI about your files!
+
+Upload your files on the sidebar.
+"""
+)
+
+with st.sidebar:
+    file = st.file_uploader(
+        "Upload a .txt .pdf or .docx file",
+        type=["pdf", "txt", "docx"],
+    )
+    model = st.selectbox("Choose Your model", ("mistral", "llama2"))
+        
 
 class ChatCallbackHandler(BaseCallbackHandler):
     message = ""
@@ -30,7 +49,7 @@ class ChatCallbackHandler(BaseCallbackHandler):
 
 
 llm = ChatOllama(
-    model="mistral:latest",
+    model=model,
     temperature=0.1,
     streaming=True,
     callbacks=[
@@ -93,23 +112,8 @@ prompt = ChatPromptTemplate.from_template(
 )
 
 
-st.title("PrivateGPT")
 
-st.markdown(
-    """
-Welcome!
-            
-Use this chatbot to ask questions to an AI about your files!
-
-Upload your files on the sidebar.
-"""
-)
-
-with st.sidebar:
-    file = st.file_uploader(
-        "Upload a .txt .pdf or .docx file",
-        type=["pdf", "txt", "docx"],
-    )
+        
 
 if file:
     retriever = embed_file(file)
