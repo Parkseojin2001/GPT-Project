@@ -161,9 +161,5 @@ if file:
         # 메모리에 저장된 대화 내용 확인
         stored_history = memory.load_memory_variables({})["history"]
 
-        # 저장된 히스토리 출력
-        st.write("Stored Conversation History:", stored_history)
-        st.write("Session_State:", st.session_state["messages"])
-
 else:
     st.session_state["messages"] = []
